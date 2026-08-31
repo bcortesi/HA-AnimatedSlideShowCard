@@ -100,8 +100,28 @@ describe("frameStyleFor", () => {
     expect(frameStyleFor("16/10")).toBe("aspect-ratio: 16 / 10;");
   });
 
-  it("falls back to the default for anything unparseable", () => {
+  it("makes a square card", () => {
+    expect(frameStyleFor("1:1")).toBe("aspect-ratio: 1 / 1;");
+    expect(frameStyleFor("1/1")).toBe("aspect-ratio: 1 / 1;");
+  });
+
+  it("survives a value YAML did not keep as a string", () => {
+    // `aspect_ratio: 1` arrives as a number, and a YAML 1.1 parser reads an
+    // unquoted `1:1` as sexagesimal 61. Both used to throw
+    // "a.split is not a function" and break the card at render time.
+    expect(() => frameStyleFor(1)).not.toThrow();
+    expect(frameStyleFor(1)).toBe("aspect-ratio: 1 / 1;");
+    expect(frameStyleFor(61)).toBe("aspect-ratio: 61 / 1;");
+    expect(frameStyleFor(1.5)).toBe("aspect-ratio: 1.5 / 1;");
+    expect(frameStyleFor("2")).toBe("aspect-ratio: 2 / 1;");
+  });
+
+  it("falls back to the default rather than throwing on junk", () => {
     for (const bad of ["", "abc", "16:", ":9", "0:0", "-16:9", "16:0"]) {
+      expect(frameStyleFor(bad)).toBe("aspect-ratio: 16 / 9;");
+    }
+    for (const bad of [null, undefined, 0, -1, Number.NaN, Number.POSITIVE_INFINITY, {}, [], true]) {
+      expect(() => frameStyleFor(bad)).not.toThrow();
       expect(frameStyleFor(bad)).toBe("aspect-ratio: 16 / 9;");
     }
   });

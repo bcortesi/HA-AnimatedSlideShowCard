@@ -88,7 +88,7 @@ source:
 | `pan.min` | `0.7` | Shortest pan, as a fraction of the room `zoom.base` allows. |
 | `pan.max` | `1.0` | Longest pan, as a fraction of that room. |
 | `pan.min_angle` | `40` | Degrees a pan direction must differ from the previous slide's. |
-| `aspect_ratio` | `16:9` | Any `W:H`, or `fill` to fill a panel with no card chrome. |
+| `aspect_ratio` | `"16:9"` | Any `"W:H"` — `"1:1"` for a square card — or `fill` to fill a panel with no card chrome. **Quote it.** |
 | `refresh_interval` | `3600` | Seconds between asset-list refreshes. |
 | `show_filename` | `false` | Caption each photo. Off by default: a static overlay risks burn-in. |
 | `pause_when_hidden` | `true` | Stop animating when off-screen or in a background tab. |
@@ -135,6 +135,27 @@ source:
   urls:
     - /local/photos/one.jpg
 ```
+
+## Card shape and size
+
+There is no `height` option. Height comes from the width the dashboard gives the
+card, plus `aspect_ratio`:
+
+```yaml
+aspect_ratio: "1:1"    # square
+aspect_ratio: "4:3"    # classic photo
+aspect_ratio: "16:9"   # default
+aspect_ratio: fill     # fill the space, no card chrome — for panel views
+```
+
+**Quote the value.** Unquoted `1:1` is a plain scalar to some YAML parsers and
+sexagesimal `61` to others, which would give you a very wide sliver of a card.
+Quoting removes the ambiguity. A bare number is accepted too and means `N:1`, so
+`aspect_ratio: 1` is also square.
+
+In a **sections** view, `grid_options` sets the card's width in columns; leave
+`rows` unset so `aspect_ratio` decides the height, or set `rows` and use
+`aspect_ratio: fill` to fill whatever box the grid gives you.
 
 ## Fullscreen viewer
 

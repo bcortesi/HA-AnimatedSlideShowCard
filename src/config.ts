@@ -184,11 +184,33 @@ export function describeMotion(
  * nothing. Only `fill`, which is meant for a panel that supplies a height, may
  * size that way; everything else gets an explicit aspect ratio.
  */
-export function frameStyleFor(aspectRatio?: string): string {
+export function frameStyleFor(aspectRatio?: unknown): string {
   if (aspectRatio === "fill") return "height: 100%;";
-  if (!aspectRatio) return DEFAULT_ASPECT_RATIO;
+  if (aspectRatio === undefined || aspectRatio === null || aspectRatio === "") {
+    return DEFAULT_ASPECT_RATIO;
+  }
 
-  const [w, h] = aspectRatio.split(/[:/]/).map((part) => Number(part.trim()));
+  // Not necessarily a string. YAML turns `aspect_ratio: 1` into a number, and a
+  // YAML 1.1 parser reads an unquoted `1:1` as sexagesimal 61 — so this has to
+  // survive whatever arrives rather than assuming `.split` exists. A bare
+  // number means N/1, matching how CSS `aspect-ratio` reads a single value.
+  if (typeof aspectRatio === "number") {
+    return aspectRatio > 0 && Number.isFinite(aspectRatio)
+      ? `aspect-ratio: ${aspectRatio} / 1;`
+      : DEFAULT_ASPECT_RATIO;
+  }
+
+  if (typeof aspectRatio !== "string") return DEFAULT_ASPECT_RATIO;
+
+  const parts = aspectRatio.split(/[:/]/);
+  if (parts.length === 1) {
+    const single = Number(parts[0].trim());
+    return Number.isFinite(single) && single > 0
+      ? `aspect-ratio: ${single} / 1;`
+      : DEFAULT_ASPECT_RATIO;
+  }
+
+  const [w, h] = parts.map((part) => Number(part.trim()));
   if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
     return `aspect-ratio: ${w} / ${h};`;
   }
