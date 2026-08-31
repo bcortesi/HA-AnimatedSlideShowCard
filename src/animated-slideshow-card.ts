@@ -22,6 +22,7 @@ import {
 } from "lit";
 import { DEFAULT_CONTROLLER_OPTIONS, SlideshowController, type ControllerOptions, type ControllerStatus } from "./controller";
 import type { HomeAssistant } from "./ha";
+import { frameStyleFor, validateConfig } from "./config";
 import { DEFAULT_KEN_BURNS_OPTIONS } from "./kenburns";
 import { RENDERER_STYLES } from "./renderer";
 import { createSource, isHassAware } from "./sources";
@@ -61,6 +62,9 @@ export class AnimatedSlideshowCard extends LitElement {
       display: block;
     }
     ha-card {
+      /* Positioned, so the status overlay and caption anchor to the card
+         rather than escaping to some ancestor further up the dashboard. */
+      position: relative;
       overflow: hidden;
       height: 100%;
       padding: 0;
@@ -76,6 +80,9 @@ export class AnimatedSlideshowCard extends LitElement {
       position: relative;
       width: 100%;
       height: 100%;
+      /* A floor, so a misconfigured or zero-height layout can still show its
+         own error message instead of collapsing into nothing. */
+      min-height: 96px;
       background: #000;
     }
     .overlay {
@@ -110,25 +117,7 @@ export class AnimatedSlideshowCard extends LitElement {
   `;
 
   setConfig(config: SlideshowCardConfig): void {
-    if (!config.source || typeof config.source !== "object") {
-      throw new Error("`source` is required. Example: source: { type: immich }");
-    }
-    if (!config.source.type) {
-      throw new Error("`source.type` is required (immich, media_source, entity or urls).");
-    }
-    if (config.duration !== undefined && config.duration <= 0) {
-      throw new Error("`duration` must be greater than 0.");
-    }
-    if (config.crossfade !== undefined && config.crossfade < 0) {
-      throw new Error("`crossfade` cannot be negative.");
-    }
-    if (
-      config.duration !== undefined &&
-      config.crossfade !== undefined &&
-      config.crossfade > config.duration
-    ) {
-      throw new Error("`crossfade` cannot exceed `duration`.");
-    }
+    validateConfig(config);
 
     const previous = this.config;
     this.config = config;
@@ -219,14 +208,7 @@ export class AnimatedSlideshowCard extends LitElement {
   }
 
   private frameStyle(): string {
-    const ratio = this.config?.aspect_ratio;
-    if (!ratio || ratio === "fill") return "height: 100%;";
-
-    const [w, h] = ratio.split(":").map(Number);
-    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
-      return `aspect-ratio: ${w} / ${h};`;
-    }
-    return "aspect-ratio: 16 / 9;";
+    return frameStyleFor(this.config?.aspect_ratio);
   }
 
   /** (Re)build the controller once config, hass and the DOM are all present. */
