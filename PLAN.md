@@ -279,14 +279,14 @@ sliders for duration / zoom / crossfade turns a 60-second feedback loop into a 1
 
 ## 7. Milestones
 
-| # | Milestone | Deliverable | Est. |
-|---|---|---|---|
-| **M0** | Scaffold | Repo, build, `hacs.json`, CI, `dev/demo.html` with mock hass | 0.5d |
-| **M1** | Ken Burns engine | `kenburns.ts` + tests, tuned entirely in the demo harness. **No HA involved.** | 1d |
-| **M2** | Immich source | Instance discovery, favorites browse, `auth/sign_path`, preloader → working card in HA | 1d |
-| **M3** | **Kiosk hardening** | `fill` panel mode, pause-when-hidden, `blurred` fit, unattended-run robustness (see §10) | 1d |
-| **M4** | Config & sources | Full schema, visual editor, `media_source` / `entity` / `urls` sources | 1d |
-| **M5** | Ship | README with screenshots/GIF, HACS release workflow, submit to HACS default | 0.5d |
+| # | Milestone | Deliverable | Est. | Status |
+|---|---|---|---|---|
+| **M0** | Scaffold | Repo, build, `hacs.json`, CI, `dev/` tuning harness | 0.5d | ✅ done |
+| **M1** | Ken Burns engine | `kenburns.ts` + tests, tuned entirely in the harness. **No HA involved.** | 1d | ✅ done |
+| **M2** | Immich source | Instance discovery, favorites browse, `auth/sign_path`, preloader → working card in HA | 1d | ✅ code complete, **untested against a real HA** |
+| **M3** | **Kiosk hardening** | `fill` panel mode, pause-when-hidden, `blurred` fit, unattended-run robustness (see §10) | 1d | 🟡 mostly done; reconnect handling outstanding |
+| **M4** | Config & sources | Visual editor; `media_source` / `entity` / `urls` sources | 1d | 🟡 sources done, editor not started |
+| **M5** | Ship | README with screenshots/GIF, HACS release workflow, submit to HACS default | 0.5d | 🟡 README + workflows done |
 
 M1 before M2 is deliberate: the visual quality is the whole point, and it can be perfected without
 any Immich or HA dependency at all.

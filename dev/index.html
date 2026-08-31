@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ken Burns tuning harness</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --panel: #16181d;
+        --line: #2c2f36;
+        --text: #e6e8eb;
+        --muted: #9aa0a6;
+        --accent: #03a9f4;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        height: 100vh;
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #0b0c0e;
+        color: var(--text);
+      }
+      #stage-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        min-width: 0;
+      }
+      #stage {
+        width: 100%;
+        max-height: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        /* A magenta ground: if any Ken Burns move ever exposes a frame edge,
+           it shows up immediately instead of hiding against black. */
+        background-color: #ff00ff;
+      }
+      aside {
+        background: var(--panel);
+        border-left: 1px solid var(--line);
+        padding: 18px;
+        overflow-y: auto;
+      }
+      h1 { font-size: 15px; margin: 0 0 4px; }
+      p.hint { color: var(--muted); font-size: 12px; margin: 0 0 18px; }
+      label { display: block; margin: 14px 0 4px; font-size: 12px; color: var(--muted); }
+      .row { display: flex; align-items: center; gap: 8px; }
+      input[type="range"] { width: 100%; }
+      output { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; font-size: 12px; }
+      select, button {
+        width: 100%; padding: 7px 9px; background: #202329; color: var(--text);
+        border: 1px solid var(--line); border-radius: 6px; font: inherit;
+      }
+      button { cursor: pointer; margin-top: 8px; }
+      button:hover { border-color: var(--accent); }
+      .status { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+                font-size: 12px; color: var(--muted); }
+      .status span { overflow-wrap: anywhere; }
+    </style>
+  </head>
+  <body>
+    <div id="stage-wrap"><div id="stage"></div></div>
+
+    <aside>
+      <h1>Ken Burns tuning harness</h1>
+      <p class="hint">
+        Drives the real <code>SlideshowController</code>, with no Home Assistant.
+        The stage sits on magenta, so an exposed frame edge is unmissable.
+      </p>
+
+      <label>Slide duration <span class="row"><output id="durationOut"></output>s</span></label>
+      <input type="range" id="duration" min="2" max="40" step="0.5" value="8" />
+
+      <label>Crossfade <span class="row"><output id="crossfadeOut"></output>s</span></label>
+      <input type="range" id="crossfade" min="0" max="8" step="0.1" value="2.5" />
+
+      <label>Zoom base <output id="zoomBaseOut"></output></label>
+      <input type="range" id="zoomBase" min="1" max="1.4" step="0.01" value="1.1" />
+
+      <label>Zoom max <output id="zoomMaxOut"></output></label>
+      <input type="range" id="zoomMax" min="1.05" max="1.8" step="0.01" value="1.28" />
+
+      <label>Fit</label>
+      <select id="fit">
+        <option value="cover">cover</option>
+        <option value="blurred">blurred (portrait-friendly)</option>
+      </select>
+
+      <label>Order</label>
+      <select id="order">
+        <option value="shuffle">shuffle</option>
+        <option value="sequential">sequential</option>
+        <option value="random">random</option>
+      </select>
+
+      <button id="next">Next slide</button>
+      <button id="toggle">Pause</button>
+
+      <div class="status">
+        Status: <span id="status">starting…</span><br />
+        Slide: <span id="slide">—</span>
+      </div>
+    </aside>
+
+    <script type="module" src="./harness.ts"></script>
+  </body>
+</html>
