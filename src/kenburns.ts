@@ -64,12 +64,26 @@ export interface KenBurnsOptions {
   minAngleSeparation: number;
 }
 
+/**
+ * Defaults tuned for motion that reads as deliberate on a wall display.
+ *
+ * The first version was too timid. At `zoomBase` 1.10 the pan ceiling is 4.5%
+ * of the frame, and with a pan fraction averaging 0.75 a photo travels about
+ * 6.8% over a 28-second move — roughly 4.7 px/s on a 1920px display, which
+ * reads as static from across a room.
+ *
+ * These raise the base to 1.18, giving a 7.6% ceiling and ~13% of travel, or
+ * about 8.9 px/s: visible without being distracting. The cost is the crop —
+ * `zoomBase` is overscan, so 1.18 means 15% of each photo is outside the frame.
+ * That trade is the whole tuning problem, and it is why `zoom.base` is the
+ * first knob to reach for rather than `duration`.
+ */
 export const DEFAULT_KEN_BURNS_OPTIONS: KenBurnsOptions = {
-  zoomBase: 1.1,
-  zoomMax: 1.28,
-  minDelta: 0.06,
-  maxDelta: 0.18,
-  panMin: 0.5,
+  zoomBase: 1.18,
+  zoomMax: 1.55,
+  minDelta: 0.12,
+  maxDelta: 0.32,
+  panMin: 0.7,
   panMax: 1.0,
   minAngleSeparation: (40 * Math.PI) / 180,
 };

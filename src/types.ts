@@ -60,6 +60,40 @@ export type SourceConfig =
   | EntitySourceConfig
   | UrlsSourceConfig;
 
+/**
+ * Zoom shape of the Ken Burns move.
+ *
+ * `base` does double duty and is the knob that matters most: it is the overscan
+ * floor, and because panning can only use the slack that overscan creates, it
+ * also caps how far a photo can travel — at most `(base - 1) / 2·base` of the
+ * frame. Raising it buys visible movement at the cost of cropping more of the
+ * photo.
+ */
+export interface ZoomConfig {
+  /** Overscan floor. Also sets the pan ceiling. Default 1.12. */
+  base?: number;
+  /** Hard ceiling on scale. Default 1.45. */
+  max?: number;
+  /** Smallest scale change within one slide. Default 0.10. */
+  min_delta?: number;
+  /** Largest scale change within one slide. Default 0.28. */
+  max_delta?: number;
+
+  /** @deprecated Use `base`. */
+  zoomBase?: number;
+  /** @deprecated Use `max`. */
+  zoomMax?: number;
+}
+
+export interface PanConfig {
+  /** Shortest pan, as a fraction of the room `zoom.base` allows. Default 0.6. */
+  min?: number;
+  /** Longest pan, as a fraction of that room. Default 1.0. */
+  max?: number;
+  /** Degrees a pan direction must differ from the previous one. Default 40. */
+  min_angle?: number;
+}
+
 export interface SlideshowCardConfig {
   type: string;
   source: SourceConfig;
@@ -67,9 +101,12 @@ export interface SlideshowCardConfig {
   crossfade?: number;
   order?: PlaylistOrder;
   fit?: SlideFit;
-  zoom?: Partial<Pick<KenBurnsOptions, "zoomBase" | "zoomMax">>;
+  zoom?: ZoomConfig;
+  pan?: PanConfig;
   aspect_ratio?: string;
   refresh_interval?: number;
   show_filename?: boolean;
   pause_when_hidden?: boolean;
 }
+
+export type { KenBurnsOptions };

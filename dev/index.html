@@ -81,10 +81,22 @@
       <input type="range" id="crossfade" min="0" max="8" step="0.1" value="2.5" />
 
       <label>Zoom base <output id="zoomBaseOut"></output></label>
-      <input type="range" id="zoomBase" min="1" max="1.4" step="0.01" value="1.1" />
+      <input type="range" id="zoomBase" min="1" max="1.8" step="0.01" value="1.18" />
 
       <label>Zoom max <output id="zoomMaxOut"></output></label>
-      <input type="range" id="zoomMax" min="1.05" max="1.8" step="0.01" value="1.28" />
+      <input type="range" id="zoomMax" min="1.05" max="2.2" step="0.01" value="1.55" />
+
+      <label>Zoom min delta <output id="minDeltaOut"></output></label>
+      <input type="range" id="minDelta" min="0" max="0.5" step="0.01" value="0.12" />
+
+      <label>Zoom max delta <output id="maxDeltaOut"></output></label>
+      <input type="range" id="maxDelta" min="0" max="0.8" step="0.01" value="0.32" />
+
+      <label>Pan min <output id="panMinOut"></output></label>
+      <input type="range" id="panMin" min="0" max="1" step="0.05" value="0.7" />
+
+      <label>Pan max <output id="panMaxOut"></output></label>
+      <input type="range" id="panMax" min="0" max="1" step="0.05" value="1" />
 
       <label>Fit</label>
       <select id="fit">
@@ -104,7 +116,16 @@
 
       <div class="status">
         Status: <span id="status">starting…</span><br />
-        Slide: <span id="slide">—</span>
+        Slide: <span id="slide">—</span><br /><br />
+        <strong>Motion rate</strong><br />
+        Pan ceiling: <span id="panCeiling">—</span> of frame<br />
+        Pan: <span id="panRate">—</span> · Zoom: <span id="zoomRate">—</span><br />
+        <span id="panPx">—</span>
+      </div>
+
+      <div class="status">
+        <strong>YAML for this setting</strong>
+        <pre id="yaml" style="white-space: pre-wrap; font-size: 11px; color: #cfd3d8;"></pre>
       </div>
     </aside>
 

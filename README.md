@@ -81,8 +81,13 @@ source:
 | `crossfade` | `3` | Seconds of overlap between slides. Cannot exceed `duration`. |
 | `order` | `shuffle` | `shuffle`, `random` or `sequential`. |
 | `fit` | `cover` | `cover` fills the frame; `blurred` letterboxes over a blurred backdrop. |
-| `zoom.zoomBase` | `1.10` | Base overscan. Must exceed 1.0 or the image cannot pan — see [How the motion works](#how-the-motion-works). |
-| `zoom.zoomMax` | `1.28` | Maximum scale. |
+| `zoom.base` | `1.18` | Overscan floor — **also caps how far the photo can pan**. See [Tuning the motion](#tuning-the-motion). |
+| `zoom.max` | `1.55` | Hard ceiling on scale. |
+| `zoom.min_delta` | `0.12` | Smallest scale change within one slide. |
+| `zoom.max_delta` | `0.32` | Largest scale change within one slide. |
+| `pan.min` | `0.7` | Shortest pan, as a fraction of the room `zoom.base` allows. |
+| `pan.max` | `1.0` | Longest pan, as a fraction of that room. |
+| `pan.min_angle` | `40` | Degrees a pan direction must differ from the previous slide's. |
 | `aspect_ratio` | `16:9` | Any `W:H`, or `fill` to fill a panel with no card chrome. |
 | `refresh_interval` | `3600` | Seconds between asset-list refreshes. |
 | `show_filename` | `false` | Caption each photo. Off by default: a static overlay risks burn-in. |
@@ -130,6 +135,58 @@ source:
     - /local/photos/one.jpg
 ```
 
+## Tuning the motion
+
+If the movement looks static, the cause is almost always `zoom.base` rather
+than `duration`. Panning can only use the slack that overscan creates, so the
+furthest a photo can travel is:
+
+```
+pan ceiling = (base − 1) / (2 × base)
+```
+
+At `base: 1.10` that is **4.5% of the frame**. A move runs from one edge of that
+range to the other, so with the default pan fraction a photo travels about 6.8%
+over a 28-second slide — roughly **4.7 pixels per second** on a 1920px display,
+which reads as static from across a room. Raising `base` is the lever, and it
+buys travel at the cost of cropping more of each photo.
+
+| `zoom.base` | Pan ceiling | Typical pan on a 1920px display | Crop |
+|---|---|---|---|
+| 1.05 | 2.4% | 2.5 px/s | barely any |
+| 1.10 | 4.5% | 4.7 px/s | slight |
+| 1.18 *(default)* | 7.6% | 8.9 px/s | 15% |
+| 1.25 | 10.0% | 12.3 px/s | 20% |
+| 1.40 | 14.3% | 17.6 px/s | 29% |
+
+Rates assume the default 25s slide with a 3s crossfade, so a 28-second move.
+
+Three starting points:
+
+```yaml
+# Subtle — a photo frame that does not draw the eye
+zoom: { base: 1.06, max: 1.20, min_delta: 0.05, max_delta: 0.12 }
+pan:  { min: 0.4, max: 0.8 }
+duration: 30
+
+# Default — visible motion, modest crop
+zoom: { base: 1.18, max: 1.55, min_delta: 0.12, max_delta: 0.32 }
+pan:  { min: 0.7, max: 1.0 }
+duration: 25
+
+# Cinematic — obvious, documentary-style movement
+zoom: { base: 1.25, max: 1.70, min_delta: 0.18, max_delta: 0.40 }
+pan:  { min: 0.8, max: 1.0 }
+duration: 18
+```
+
+Shortening `duration` also speeds everything up, since the move always spans
+`duration + crossfade`.
+
+`npm run dev` gives you all of these as live sliders, with a readout of the
+resulting pan rate in **pixels per second** and the matching YAML to paste into
+your dashboard.
+
 ## How the motion works
 
 Each slide gets a randomised move: a zoom direction, a scale range and a pan
@@ -147,7 +204,7 @@ scale only exposes `(S − 1) × W / 2` of slack per side, so:
 `maxPan` grows with `S`, so clamping both endpoints to the limit of the *smaller*
 scale keeps every interpolated frame safe too. One consequence: a move ending at
 exactly `S = 1.0` has zero pan room, which is why moves are built on a base
-overscan (`zoom.zoomBase`) rather than starting from 1.0.
+overscan (`zoom.base`) rather than starting from 1.0.
 
 Two details that separate this from a cheap slideshow:
 

@@ -22,8 +22,7 @@ import {
 } from "lit";
 import { DEFAULT_CONTROLLER_OPTIONS, SlideshowController, type ControllerOptions, type ControllerStatus } from "./controller";
 import type { HomeAssistant } from "./ha";
-import { frameStyleFor, validateConfig } from "./config";
-import { DEFAULT_KEN_BURNS_OPTIONS } from "./kenburns";
+import { frameStyleFor, kenBurnsOptionsFrom, validateConfig } from "./config";
 import { RENDERER_STYLES } from "./renderer";
 import { createSource, isHassAware } from "./sources";
 import type { Slide, SlideshowCardConfig, SlideSource } from "./types";
@@ -249,11 +248,7 @@ export class AnimatedSlideshowCard extends LitElement {
       fit: config.fit ?? "cover",
       order: config.order ?? "shuffle",
       refreshInterval: config.refresh_interval ?? DEFAULT_CONTROLLER_OPTIONS.refreshInterval,
-      kenBurns: {
-        ...DEFAULT_KEN_BURNS_OPTIONS,
-        zoomBase: config.zoom?.zoomBase ?? DEFAULT_KEN_BURNS_OPTIONS.zoomBase,
-        zoomMax: config.zoom?.zoomMax ?? DEFAULT_KEN_BURNS_OPTIONS.zoomMax,
-      },
+      kenBurns: kenBurnsOptionsFrom(config),
     };
   }
 
