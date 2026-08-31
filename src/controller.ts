@@ -37,6 +37,14 @@ export interface ControllerEvents {
 
 /** Consecutive resolve/load failures before a slide is given up on. */
 const MAX_SLIDE_ATTEMPTS = 3;
+/**
+ * How many shown slides to remember, so "previous" is meaningful.
+ *
+ * The playlist is shuffled, so stepping back cannot be derived — the order only
+ * exists in what has already been shown. Bounded because this is a display that
+ * runs for weeks.
+ */
+const HISTORY_LIMIT = 50;
 /** Backoff bounds for a failing asset-list fetch, in milliseconds. */
 const RELOAD_BACKOFF_MIN = 5_000;
 const RELOAD_BACKOFF_MAX = 5 * 60_000;
@@ -57,6 +65,11 @@ export class SlideshowController {
   private status: ControllerStatus = "idle";
   /** Guards against overlapping advances when a manual next() races the timer. */
   private advancing = false;
+
+  /** Slides already shown, and where in them we are. Drives previous/next. */
+  private history: Slide[] = [];
+  private cursor = -1;
+  private _currentImage?: HTMLImageElement;
 
   constructor(
     host: HTMLElement,
@@ -113,6 +126,26 @@ export class SlideshowController {
     void this.advance();
   }
 
+  /** Step back to the previously shown slide, if there is one. */
+  previous(): void {
+    if (!this.running || this.destroyed) return;
+    this.clearTimer("slide");
+    void this.retreat();
+  }
+
+  /** The image currently on screen, for the fullscreen viewer to borrow. */
+  get currentImage(): HTMLImageElement | undefined {
+    return this._currentImage;
+  }
+
+  get currentSlide(): Slide | undefined {
+    return this.history[this.cursor];
+  }
+
+  get canGoBack(): boolean {
+    return this.cursor > 0;
+  }
+
   destroy(): void {
     this.destroyed = true;
     this.running = false;
@@ -121,6 +154,9 @@ export class SlideshowController {
     this.clearTimer("retry");
     this.renderer.destroy();
     this.preloader.clear();
+    this.history = [];
+    this.cursor = -1;
+    this._currentImage = undefined;
   }
 
   /** Re-fetch the asset list, then keep playing. */
@@ -166,6 +202,14 @@ export class SlideshowController {
     this.advancing = true;
 
     try {
+      // If the viewer stepped back, going forward should retrace that path
+      // rather than jumping to an unrelated photo.
+      if (this.cursor < this.history.length - 1) {
+        this.cursor++;
+        if (await this.tryShow(this.history[this.cursor])) return;
+        // The remembered slide no longer loads; fall through to a fresh one.
+      }
+
       for (let attempt = 0; attempt < MAX_SLIDE_ATTEMPTS; attempt++) {
         const slide = this.playlist.next();
         if (!slide) {
@@ -173,23 +217,13 @@ export class SlideshowController {
           return;
         }
 
-        try {
-          const url = await this.source.urlFor(slide);
-          if (this.destroyed) return;
-
-          const image = await this.preloader.get(url);
-          if (this.destroyed) return;
-
-          this.renderer.present(image);
-          this.setStatus("playing");
-          this.events.onSlideChange?.(slide);
-          this.warmUpcoming();
+        if (await this.tryShow(slide)) {
+          this.remember(slide);
           return;
-        } catch {
-          // A single unreadable photo must never stop the slideshow; try the
-          // next one. This covers an expired signature, a deleted asset, and a
-          // transient network blip alike.
         }
+        // A single unreadable photo must never stop the slideshow; try the next
+        // one. This covers an expired signature, a deleted asset, and a
+        // transient network blip alike.
       }
 
       // Every attempt failed: the problem is broader than one photo, so back off
@@ -199,6 +233,49 @@ export class SlideshowController {
       this.advancing = false;
       if (this.running && !this.paused && !this.destroyed) this.scheduleNext();
     }
+  }
+
+  /** Step back through what has already been shown. */
+  private async retreat(): Promise<void> {
+    if (!this.running || this.destroyed || this.advancing || this.cursor <= 0) return;
+    this.advancing = true;
+
+    try {
+      this.cursor--;
+      await this.tryShow(this.history[this.cursor]);
+    } finally {
+      this.advancing = false;
+      if (this.running && !this.paused && !this.destroyed) this.scheduleNext();
+    }
+  }
+
+  /** Resolve, decode and present one slide. Returns false if it cannot be shown. */
+  private async tryShow(slide: Slide): Promise<boolean> {
+    try {
+      const url = await this.source.urlFor(slide);
+      if (this.destroyed) return false;
+
+      const image = await this.preloader.get(url);
+      if (this.destroyed) return false;
+
+      this.renderer.present(image);
+      this._currentImage = image;
+      this.setStatus("playing");
+      this.events.onSlideChange?.(slide);
+      this.warmUpcoming();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private remember(slide: Slide): void {
+    // A newly drawn slide branches from wherever the cursor sits, so anything
+    // ahead of it is no longer the future.
+    this.history.length = this.cursor + 1;
+    this.history.push(slide);
+    if (this.history.length > HISTORY_LIMIT) this.history.shift();
+    this.cursor = this.history.length - 1;
   }
 
   /** Warm the next slides so their bitmaps are ready before they are needed. */

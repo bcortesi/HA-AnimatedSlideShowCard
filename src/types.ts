@@ -27,6 +27,9 @@ export interface SlideSource {
 
 export type SlideFit = "cover" | "blurred";
 
+/** What tapping the card does. */
+export type TapAction = "fullscreen" | "none";
+
 export type ImmichCollection = "favorites" | "album" | "person" | "tag";
 
 export type ImageSize = "thumbnail" | "preview" | "fullsize";
@@ -107,6 +110,8 @@ export interface SlideshowCardConfig {
   refresh_interval?: number;
   show_filename?: boolean;
   pause_when_hidden?: boolean;
+  /** Tapping opens the fullscreen viewer by default. */
+  tap_action?: TapAction;
 }
 
 export type { KenBurnsOptions };

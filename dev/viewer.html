@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Fullscreen viewer harness</title>
+    <style>
+      body { margin: 0; padding: 24px; background: #0b0c0e; color: #e6e8eb;
+             font: 14px/1.6 system-ui, sans-serif; }
+      button { padding: 10px 16px; font: inherit; background: #202329; color: inherit;
+               border: 1px solid #2c2f36; border-radius: 6px; cursor: pointer; }
+      pre { margin-top: 16px; padding: 12px; background: #16181d; border-radius: 6px;
+            font-size: 12px; min-height: 120px; }
+    </style>
+  </head>
+  <body>
+    <h1>Fullscreen viewer harness</h1>
+    <p>Drives <code>FullscreenViewer</code> directly, with no card and no Home Assistant.</p>
+    <button id="open">Open viewer</button>
+    <pre id="log"></pre>
+    <div id="host"></div>
+    <script type="module" src="./viewer-demo.ts"></script>
+  </body>
+</html>

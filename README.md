@@ -92,6 +92,7 @@ source:
 | `refresh_interval` | `3600` | Seconds between asset-list refreshes. |
 | `show_filename` | `false` | Caption each photo. Off by default: a static overlay risks burn-in. |
 | `pause_when_hidden` | `true` | Stop animating when off-screen or in a background tab. |
+| `tap_action` | `fullscreen` | `fullscreen` opens the viewer on tap; `none` disables it. |
 
 ### Sources
 
@@ -134,6 +135,31 @@ source:
   urls:
     - /local/photos/one.jpg
 ```
+
+## Fullscreen viewer
+
+Tap or click the card to open the current photo fullscreen. The viewer shows the
+picture **whole and still** — no crop, no motion — because the reason to tap a
+photo is to look at it properly.
+
+- **Close** — the ✕ button, tapping anywhere off the photo, or `Esc`
+- **Navigate** — the ‹ › buttons, or the ← → arrow keys
+- The slideshow pauses while the viewer is open and resumes on close, on
+  whatever photo you navigated to
+
+Set `tap_action: none` to turn it off.
+
+Two implementation notes, since both are easy to get wrong:
+
+It is built on `<dialog showModal()>` rather than a `position: fixed` overlay. A
+Lovelace card sits deep inside a dashboard whose ancestors may carry transforms
+or `overflow: hidden`, either of which silently traps a fixed-position element
+inside the card. A modal dialog renders in the browser's top layer and escapes
+all of it, and brings Escape-to-close and a focus trap along with it.
+
+Stepping back is served from a history of what has already been shown, not from
+the playlist — with `order: shuffle` the previous photo is not derivable, it only
+exists in the past. That history is capped at 50 entries.
 
 ## Tuning the motion
 

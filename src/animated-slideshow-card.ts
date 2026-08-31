@@ -26,6 +26,7 @@ import { frameStyleFor, kenBurnsOptionsFrom, validateConfig } from "./config";
 import { RENDERER_STYLES } from "./renderer";
 import { createSource, isHassAware } from "./sources";
 import type { Slide, SlideshowCardConfig, SlideSource } from "./types";
+import { FullscreenViewer, VIEWER_STYLES } from "./viewer";
 
 const CARD_VERSION = "0.1.0";
 
@@ -51,6 +52,20 @@ export class AnimatedSlideshowCard extends LitElement {
   private observer?: IntersectionObserver;
   private onVisibilityChange = () => this.syncPlayback();
   private onScreen = true;
+
+  /**
+   * Built on first use, not in a field initializer: Lit creates `renderRoot`
+   * during the first update, so it does not exist yet when fields initialise.
+   */
+  private _viewer?: FullscreenViewer;
+  private viewerOpen = false;
+
+  private get viewer(): FullscreenViewer {
+    if (!this._viewer) {
+      this._viewer = new FullscreenViewer(this.renderRoot as ShadowRoot);
+    }
+    return this._viewer;
+  }
 
   private _status: ControllerStatus = "idle";
   private _statusDetail?: string;
@@ -112,7 +127,12 @@ export class AnimatedSlideshowCard extends LitElement {
       background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
       pointer-events: none;
     }
+    .frame.tappable {
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
     ${unsafeCSS(RENDERER_STYLES)}
+    ${unsafeCSS(VIEWER_STYLES)}
   `;
 
   setConfig(config: SlideshowCardConfig): void {
@@ -156,6 +176,9 @@ export class AnimatedSlideshowCard extends LitElement {
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
     this.observer?.disconnect();
     this.observer = undefined;
+    this._viewer?.destroy();
+    this._viewer = undefined;
+    this.viewerOpen = false;
     this.teardown();
   }
 
@@ -167,9 +190,18 @@ export class AnimatedSlideshowCard extends LitElement {
 
   override render(): TemplateResult {
     const style = this.frameStyle();
+    const tappable = this.tapOpensViewer;
     return html`
       <ha-card>
-        <div class="frame" style=${style}></div>
+        <div
+          class="frame ${tappable ? "tappable" : ""}"
+          style=${style}
+          role=${tappable ? "button" : nothing}
+          tabindex=${tappable ? "0" : nothing}
+          aria-label=${tappable ? "Show photo fullscreen" : nothing}
+          @click=${tappable ? this.openViewer : nothing}
+          @keydown=${tappable ? this.onFrameKeydown : nothing}
+        ></div>
         ${this.renderOverlay()} ${this.renderCaption()}
       </ha-card>
     `;
@@ -184,6 +216,40 @@ export class AnimatedSlideshowCard extends LitElement {
       type: "custom:animated-slideshow-card",
       source: { type: "immich", collection: "favorites" },
     };
+  }
+
+  private get tapOpensViewer(): boolean {
+    return (this.config?.tap_action ?? "fullscreen") === "fullscreen";
+  }
+
+  private onFrameKeydown = (event: KeyboardEvent): void => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      this.openViewer();
+    }
+  };
+
+  private openViewer = (): void => {
+    const image = this.controller?.currentImage;
+    if (!image || this.viewer.isOpen) return;
+
+    // Hold the slideshow while the viewer is up, so it does not advance behind
+    // the overlay and leave a different photo waiting on close.
+    this.viewerOpen = true;
+    this.syncPlayback();
+
+    this.viewer.open(image, this.controller?.currentSlide?.title, {
+      onPrevious: () => this.controller?.previous(),
+      onNext: () => this.controller?.next(),
+      onClose: () => this.closeViewer(),
+    });
+  };
+
+  private closeViewer(): void {
+    if (!this.viewerOpen) return;
+    this.viewerOpen = false;
+    this.viewer.close();
+    this.syncPlayback();
   }
 
   private renderOverlay(): TemplateResult | typeof nothing {
@@ -232,6 +298,15 @@ export class AnimatedSlideshowCard extends LitElement {
       onStatusChange: (status, detail) => this.setStatus(status, detail),
       onSlideChange: (slide: Slide) => {
         this._caption = slide.title;
+        // Navigation inside the viewer drives the slideshow, so the viewer
+        // learns about the new photo the same way the card does.
+        if (this.viewerOpen && this.controller?.currentImage) {
+          this.viewer.update(
+            this.controller.currentImage,
+            slide.title,
+            this.controller.canGoBack,
+          );
+        }
       },
     });
 
@@ -279,6 +354,14 @@ export class AnimatedSlideshowCard extends LitElement {
 
   private syncPlayback(): void {
     if (!this.controller) return;
+
+    // The viewer overrides everything: while someone is looking at a photo, the
+    // slideshow must not move on underneath them.
+    if (this.viewerOpen) {
+      this.controller.pause();
+      return;
+    }
+
     if (this.config?.pause_when_hidden === false) {
       this.controller.resume();
       return;

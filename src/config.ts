@@ -11,6 +11,8 @@ import type { SlideshowCardConfig, SourceConfig } from "./types";
 
 export const VALID_SOURCE_TYPES = ["immich", "media_source", "entity", "urls"] as const;
 
+export const VALID_TAP_ACTIONS = ["fullscreen", "none"] as const;
+
 /** Fallback used when no aspect ratio is configured, or one cannot be parsed. */
 const DEFAULT_ASPECT_RATIO = "aspect-ratio: 16 / 9;";
 
@@ -66,6 +68,16 @@ export function validateConfig(config: SlideshowCardConfig): void {
   ) {
     throw new Error("`crossfade` cannot exceed `duration`.");
   }
+  if (
+    config.tap_action !== undefined &&
+    !VALID_TAP_ACTIONS.includes(config.tap_action as (typeof VALID_TAP_ACTIONS)[number])
+  ) {
+    throw new Error(
+      `Unknown \`tap_action\`: "${config.tap_action}". ` +
+        `Valid values: ${VALID_TAP_ACTIONS.join(", ")}.`,
+    );
+  }
+
   validateMotion(config);
 }
 
