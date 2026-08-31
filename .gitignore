@@ -1,0 +1,22 @@
+# --- All dot-files / dot-directories are ignored by default ---
+# (editor, tooling and assistant state: .vscode, .idea, .remember, .claude, .DS_Store, ...)
+.*
+
+# ...except the ones the repository genuinely needs.
+!.gitignore
+!.gitattributes
+!.github/
+!.editorconfig
+!.nvmrc
+
+# --- Build output ---
+# dist/ is produced by `npm run build` and attached to GitHub releases by CI,
+# so it is not tracked. For local HACS testing, copy dist/animated-slideshow-card.js
+# into your Home Assistant `config/www/` folder.
+dist/
+node_modules/
+
+# --- Misc ---
+*.log
+npm-debug.log*
+coverage/
