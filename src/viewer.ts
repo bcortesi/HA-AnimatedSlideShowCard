@@ -100,6 +100,17 @@ export const VIEWER_STYLES = `
     top: 50%;
     transform: translateY(-50%);
   }
+  .asc-viewer-date {
+    position: absolute;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.95rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+  }
   .asc-viewer-caption {
     position: absolute;
     left: 0;
@@ -133,6 +144,7 @@ export class FullscreenViewer {
   private dialog?: HTMLDialogElement;
   private image?: HTMLImageElement;
   private caption?: HTMLDivElement;
+  private dateBadge?: HTMLDivElement;
   private prevButton?: HTMLButtonElement;
   private callbacks?: ViewerCallbacks;
 
@@ -142,16 +154,21 @@ export class FullscreenViewer {
     return this.dialog?.open ?? false;
   }
 
-  open(image: HTMLImageElement, title: string | undefined, callbacks: ViewerCallbacks): void {
+  open(
+    image: HTMLImageElement,
+    title: string | undefined,
+    callbacks: ViewerCallbacks,
+    date?: string,
+  ): void {
     this.callbacks = callbacks;
     const dialog = this.dialog ?? this.build();
 
-    this.update(image, title);
+    this.update(image, title, true, date);
     if (!dialog.open) dialog.showModal();
   }
 
   /** Swap in a new photo while the viewer stays open. */
-  update(image: HTMLImageElement, title?: string, canGoBack = true): void {
+  update(image: HTMLImageElement, title?: string, canGoBack = true, date?: string): void {
     if (this.image) {
       this.image.src = image.src;
       this.image.alt = title ?? "";
@@ -161,6 +178,17 @@ export class FullscreenViewer {
       this.caption.style.display = title ? "" : "none";
     }
     if (this.prevButton) this.prevButton.disabled = !canGoBack;
+    this.setDate(date);
+  }
+
+  /**
+   * The date arrives later than the photo, because recovering it may need a
+   * fetch, so it is set separately rather than only at open time.
+   */
+  setDate(date?: string): void {
+    if (!this.dateBadge) return;
+    this.dateBadge.textContent = date ?? "";
+    this.dateBadge.style.display = date ? "" : "none";
   }
 
   close(): void {
@@ -174,6 +202,7 @@ export class FullscreenViewer {
     this.dialog = undefined;
     this.image = undefined;
     this.caption = undefined;
+    this.dateBadge = undefined;
     this.prevButton = undefined;
     this.callbacks = undefined;
   }
@@ -191,6 +220,10 @@ export class FullscreenViewer {
 
     const caption = document.createElement("div");
     caption.className = "asc-viewer-caption";
+
+    const dateBadge = document.createElement("div");
+    dateBadge.className = "asc-viewer-date";
+    dateBadge.style.display = "none";
 
     const close = button("asc-viewer-close", "Close", ICONS.close);
     const previous = button("asc-viewer-prev", "Previous photo", ICONS.previous);
@@ -234,12 +267,13 @@ export class FullscreenViewer {
     // the viewer went away and can resume the slideshow.
     dialog.addEventListener("close", () => this.callbacks?.onClose());
 
-    dialog.append(surface, caption, close, previous, next);
+    dialog.append(surface, caption, dateBadge, close, previous, next);
     this.root.appendChild(dialog);
 
     this.dialog = dialog;
     this.image = image;
     this.caption = caption;
+    this.dateBadge = dateBadge;
     this.prevButton = previous;
     return dialog;
   }

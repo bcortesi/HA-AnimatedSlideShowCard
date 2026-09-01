@@ -34,12 +34,12 @@ const callbacks = {
   onPrevious: () => {
     index--;
     say(`previous -> ${index}`);
-    viewer.update(imageFor(index), `Image ${index + 1}`, index > 0);
+    viewer.update(imageFor(index), `Image ${index + 1}`, index > 0, "15/03/2024");
   },
   onNext: () => {
     index++;
     say(`next -> ${index}`);
-    viewer.update(imageFor(index), `Image ${index + 1}`, index > 0);
+    viewer.update(imageFor(index), `Image ${index + 1}`, index > 0, "15/03/2024");
   },
   onClose: () => {
     say("close");
@@ -49,7 +49,7 @@ const callbacks = {
 
 document.getElementById("open")!.addEventListener("click", () => {
   say("open");
-  viewer.open(imageFor(index), `Image ${index + 1}`, callbacks);
+  viewer.open(imageFor(index), `Image ${index + 1}`, callbacks, "15/03/2024");
 });
 
 (window as unknown as Record<string, unknown>).__viewer = viewer;

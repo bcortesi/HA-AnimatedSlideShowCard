@@ -91,6 +91,8 @@ source:
 | `aspect_ratio` | `"16:9"` | Any `"W:H"` — `"1:1"` for a square card — or `fill` to fill a panel with no card chrome. **Quote it.** |
 | `refresh_interval` | `3600` | Seconds between asset-list refreshes. |
 | `show_filename` | `false` | Caption each photo. Off by default: a static overlay risks burn-in. |
+| `show_date` | `true` | Show the photo's date, bottom-right, as `dd/mm/yyyy`. |
+| `exif_date` | `true` | Read EXIF when the file name has no date. See [Photo dates](#photo-dates). |
 | `pause_when_hidden` | `true` | Stop animating when off-screen or in a background tab. |
 | `tap_action` | `fullscreen` | `fullscreen` opens the viewer on tap; `none` disables it. |
 
@@ -135,6 +137,36 @@ source:
   urls:
     - /local/photos/one.jpg
 ```
+
+## Photo dates
+
+The date appears bottom-right on the card and in the fullscreen viewer, as
+`dd/mm/yyyy`. Set `show_date: false` to hide it.
+
+**Home Assistant's Immich media source sends no date to the browser** — the only
+per-asset fields it exposes are the asset id, the original file name and the
+mime type. So the card recovers the date itself, in two layers:
+
+1. **The file name**, which is free and instant. Covers `IMG_20240315_...`,
+   `PXL_...`, `VID_...`, `IMG-20240315-WA...` (WhatsApp), screenshots, and
+   `2024-03-15` style names — most Android and desktop photos.
+2. **EXIF from the image bytes**, when the name has no date. This is what covers
+   iPhone photos, which are just `IMG_1234`. It costs one extra fetch per photo,
+   usually served from the browser cache since the same URL was just loaded as
+   an image, and the result is remembered so a photo is inspected only once.
+
+If a photo has neither, no date is shown — a wrong date is worse than none, so
+implausible values (`IMG_12345678`, 31 February) are rejected rather than
+guessed at.
+
+Set `exif_date: false` to use file names only and never make the extra request.
+
+> **If dates are missing on most photos**, EXIF is likely being stripped from
+> the size being served. Try `source: { image_size: fullsize }`, which is most
+> likely to carry the original metadata.
+
+A note for wall panels: the date is a small static overlay, so it carries some
+burn-in risk on OLED over months. `show_date: false` turns it off.
 
 ## Card shape and size
 

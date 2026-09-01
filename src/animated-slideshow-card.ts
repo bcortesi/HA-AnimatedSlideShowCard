@@ -26,6 +26,7 @@ import { frameStyleFor, kenBurnsOptionsFrom, validateConfig } from "./config";
 import { RENDERER_STYLES } from "./renderer";
 import { createSource, isHassAware } from "./sources";
 import type { Slide, SlideshowCardConfig, SlideSource } from "./types";
+import { PhotoDateResolver, formatDate } from "./photo-date";
 import { FullscreenViewer, VIEWER_STYLES } from "./viewer";
 
 const CARD_VERSION = "0.1.0";
@@ -42,6 +43,7 @@ export class AnimatedSlideshowCard extends LitElement {
     _status: { state: true },
     _statusDetail: { state: true },
     _caption: { state: true },
+    _date: { state: true },
   };
 
   private _hass?: HomeAssistant;
@@ -70,6 +72,10 @@ export class AnimatedSlideshowCard extends LitElement {
   private _status: ControllerStatus = "idle";
   private _statusDetail?: string;
   private _caption?: string;
+  private _date?: string;
+  private dates = new PhotoDateResolver();
+  /** Identifies the slide a pending date lookup belongs to. */
+  private dateToken = 0;
 
   static override styles = css`
     :host {
@@ -114,6 +120,20 @@ export class AnimatedSlideshowCard extends LitElement {
     }
     .overlay.error {
       color: var(--error-color, #db4437);
+    }
+    .date {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 0.78rem;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      /* Readable over a photo of any brightness without a heavy plate. */
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
     }
     .caption {
       position: absolute;
@@ -202,7 +222,7 @@ export class AnimatedSlideshowCard extends LitElement {
           @click=${tappable ? this.openViewer : nothing}
           @keydown=${tappable ? this.onFrameKeydown : nothing}
         ></div>
-        ${this.renderOverlay()} ${this.renderCaption()}
+        ${this.renderOverlay()} ${this.renderCaption()} ${this.renderDate()}
       </ha-card>
     `;
   }
@@ -238,11 +258,16 @@ export class AnimatedSlideshowCard extends LitElement {
     this.viewerOpen = true;
     this.syncPlayback();
 
-    this.viewer.open(image, this.controller?.currentSlide?.title, {
-      onPrevious: () => this.controller?.previous(),
-      onNext: () => this.controller?.next(),
-      onClose: () => this.closeViewer(),
-    });
+    this.viewer.open(
+      image,
+      this.controller?.currentSlide?.title,
+      {
+        onPrevious: () => this.controller?.previous(),
+        onNext: () => this.controller?.next(),
+        onClose: () => this.closeViewer(),
+      },
+      this._date,
+    );
   };
 
   private closeViewer(): void {
@@ -267,6 +292,50 @@ export class AnimatedSlideshowCard extends LitElement {
     return html`<div class="overlay ${this._status === "error" ? "error" : ""}">${message}</div>`;
   }
 
+  /**
+   * Work out the photo's date and show it.
+   *
+   * Recovering a date can need a fetch, so this races against the slideshow
+   * moving on. The token makes that safe: a result is only applied if its slide
+   * is still the one on screen, otherwise a slow lookup would stamp an old
+   * photo's date onto a new photo.
+   */
+  private async resolveDate(slide: Slide): Promise<void> {
+    if (this.config?.show_date === false) {
+      this._date = undefined;
+      return;
+    }
+
+    const token = ++this.dateToken;
+    const url = this.controller?.currentImage?.src;
+
+    // Anything already known is applied immediately, so a revisited photo does
+    // not flicker its date back in.
+    const known = this.dates.cached(slide.id);
+    if (known !== undefined) {
+      this.applyDate(known ? formatDate(known) : undefined);
+      return;
+    }
+
+    this._date = undefined;
+    if (!url) return;
+
+    const date = await this.dates.resolve(slide.id, slide.title, url);
+    if (token !== this.dateToken) return; // a newer slide won
+
+    this.applyDate(date ? formatDate(date) : undefined);
+  }
+
+  private applyDate(text: string | undefined): void {
+    this._date = text;
+    if (this.viewerOpen) this.viewer.setDate(text);
+  }
+
+  private renderDate(): TemplateResult | typeof nothing {
+    if (this.config?.show_date === false || !this._date) return nothing;
+    return html`<div class="date">${this._date}</div>`;
+  }
+
   private renderCaption(): TemplateResult | typeof nothing {
     if (!this.config?.show_filename || !this._caption) return nothing;
     return html`<div class="caption">${this._caption}</div>`;
@@ -285,6 +354,9 @@ export class AnimatedSlideshowCard extends LitElement {
 
     this.teardown();
 
+    // Rebuilt with the config's EXIF preference; the cache is per-config anyway.
+    this.dates = new PhotoDateResolver(this.config.exif_date !== false);
+
     let source: SlideSource;
     try {
       source = this.source ?? createSource(this._hass, this.config.source);
@@ -298,6 +370,7 @@ export class AnimatedSlideshowCard extends LitElement {
       onStatusChange: (status, detail) => this.setStatus(status, detail),
       onSlideChange: (slide: Slide) => {
         this._caption = slide.title;
+        void this.resolveDate(slide);
         // Navigation inside the viewer drives the slideshow, so the viewer
         // learns about the new photo the same way the card does.
         if (this.viewerOpen && this.controller?.currentImage) {

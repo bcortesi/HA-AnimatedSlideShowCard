@@ -109,6 +109,13 @@ export interface SlideshowCardConfig {
   aspect_ratio?: string;
   refresh_interval?: number;
   show_filename?: boolean;
+  /** Show the photo's date, bottom-right. Defaults to true. */
+  show_date?: boolean;
+  /**
+   * Read EXIF from the image bytes when the file name carries no date.
+   * Defaults to true; costs one extra (usually cached) fetch per photo.
+   */
+  exif_date?: boolean;
   pause_when_hidden?: boolean;
   /** Tapping opens the fullscreen viewer by default. */
   tap_action?: TapAction;
